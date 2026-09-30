@@ -37,8 +37,9 @@ e tempo de casa.
 ## Regras
 
 1. **Quadro**: ativos na data da base (admitido até a data e sem desligamento), uma linha por
-   pessoa — a mesma regra dos painéis Turnover e Dados Demográficos. População: **todos os ativos**;
-   o filtro Vínculo tira estagiários, PJ, conselho etc.
+   pessoa — a mesma regra dos painéis Turnover e Dados Demográficos. **População padrão = empregados**
+   (decisão de 30/09/2026, como pede o GRI 2-21): sem conselheiros, estagiários e PJ; diretores
+   estatutários entram. O controle "População" na barra lateral troca para todos os ativos.
 2. **Salário** = salário-base mensal do cadastro (sem variável e sem benefícios).
 3. **Gap de gênero** = (salário dos homens − salário das mulheres) ÷ salário dos homens, pela média
    e pela mediana. Positivo = mulheres ganham menos.
@@ -46,7 +47,10 @@ e tempo de casa.
    número de pessoas do cargo.
 5. **Maior remuneração ÷ demais** = maior salário-base do filtro ÷ média (ou mediana, GRI 2-21)
    de todas as outras pessoas.
-6. **Liderança** = níveis de coordenação para cima, incluindo diretoria e conselho.
+6. **Liderança** = níveis de coordenação para cima, com a diretoria e **sem o conselho** (decisão de
+   30/09/2026; mesma regra no Dados Demográficos).
+9. **Raça/cor não informada** (23 ativos em 29/09/2026) continua como grupo próprio e no denominador;
+   a lista foi para o RH completar o cadastro (`_neon/pendencias/`, fora do repositório).
 7. **Concentração do setor** = fatia da massa salarial ÷ fatia do headcount.
 8. Sem supressão de grupos pequenos (decisão de 28/09/2026: o painel é restrito a quem pode ver
    remuneração).

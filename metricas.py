@@ -31,10 +31,18 @@ ORDEM_RACA = ["Branca", "Parda", "Preta", "Amarela", "Não Informada"]
 ORDEM_NIVEL = ["Operacional", "Pilotos", "Staff", "Supervisor/Advogado/Engenheiro", "Coordenador/Especialista",
                "Coordenador de Obras", "Gerente de Vendas", "Gerente", "Gerente Executivo de Obras", "Gerente Executivo",
                "Gerente Executivo Estadual de Obras", "Diretor de Obras", "Diretor", "Conselheiro"]
-# Liderança = de coordenação para cima (inclui o Conselho)
+# Liderança = de coordenação para cima, sem o Conselho (decisão de 30/09/2026: o conselho não faz a
+# gestão do dia a dia; a diretoria entra)
 NIVEIS_LIDERANCA = {"Coordenador/Especialista", "Coordenador de Obras", "Gerente de Vendas", "Gerente",
                     "Gerente Executivo de Obras", "Gerente Executivo", "Gerente Executivo Estadual de Obras",
-                    "Diretor de Obras", "Diretor", "Conselheiro"}
+                    "Diretor de Obras", "Diretor"}
+# População padrão dos indicadores de remuneração = empregados (decisão de 30/09/2026, padrão GRI 2-21):
+# sem conselheiros, estagiários e PJ. Diretores estatutários entram.
+VINCULOS_FORA_EMPREGADOS = {"Estagiário", "PJ"}
+
+
+def empregados(q: pd.DataFrame) -> pd.DataFrame:
+    return q[(q["nivel"] != "Conselheiro") & ~q["vinculo"].isin(VINCULOS_FORA_EMPREGADOS)]
 NEGRAS = {"Preta", "Parda"}
 
 

@@ -292,6 +292,9 @@ navegacao = st.navigation([
 
 opcoes = lambda c: sorted(df[c].dropna().unique())  # noqa: E731
 with pp.barra_lateral(fonte="Neon + Databricks", atualizado_em=carga):
+    populacao = st.segmented_control("População", ["Empregados", "Todos os ativos"], default="Empregados",
+                                     help="Empregados (padrão GRI 2-21): sem conselheiros, estagiários e PJ; diretores estatutários "
+                                          "entram. Todos os ativos: o quadro inteiro.") or "Empregados"
     est = st.segmented_control("Estatística", ["Média", "Mediana"], default="Média",
                                help="Vale para os gráficos de gênero, raça/cor e tempo de casa.") or "Média"
     st.markdown("**Filtros**")
@@ -311,7 +314,8 @@ with pp.barra_lateral(fonte="Neon + Databricks", atualizado_em=carga):
 rotulos = {"diretoria": "Diretoria", "area": "Área", "nome_centro_custo": "Centro de custo", "familia_cargo": "Família de cargo",
            "nivel": "Nível", "vinculo": "Vínculo", "sexo": "Sexo", "raca_cor": "Raça/cor"}
 pp.cabecalho("Equidade Salarial" if navegacao.title == "Visão geral e RI" else navegacao.title, atualizado_em=carga,
-             filtros={rotulos[c]: vals for c, vals in sel.items()},
+             filtros={"População": "empregados (sem conselho, estagiários e PJ)" if populacao == "Empregados" else "todos os ativos",
+                      **{rotulos[c]: vals for c, vals in sel.items()}},
              legenda=f"Quadro ativo em {ref:%d/%m/%Y} · salário-base mensal · estatística dos gráficos: {est.lower()} · "
                      "gap = (homens − mulheres) ÷ homens; positivo = mulheres ganham menos")
 
@@ -320,6 +324,8 @@ for col, vals in sel.items():
     if vals:
         base = base[base[col].isin(vals)]
 q = m.quadro_em(base, ref)
+if populacao == "Empregados":
+    q = m.empregados(q)
 
 if q.empty:
     st.info(SEM_DADOS, icon=":material/info:")
@@ -372,9 +378,9 @@ def pagina_geral() -> None:
         <b>Gap de gênero</b>: (salário dos homens − salário das mulheres) ÷ salário dos homens, pela média e pela
         mediana. <b>No mesmo cargo</b>: o gap calculado dentro de cada cargo que tem homens e mulheres, ponderado
         pelo número de pessoas — tira o efeito de homens e mulheres estarem em cargos diferentes.<br><br>
-        <b>Liderança</b>: níveis de coordenação para cima (inclui diretoria e conselho).<br>
+        <b>Liderança</b>: níveis de coordenação para cima, com a diretoria e sem o conselho.<br>
         <b>Base</b>: salário-base mensal do cadastro, sem variável e sem benefícios; todos os ativos em {ref:%d/%m/%Y}
-        (use o filtro Vínculo para tirar estagiários, PJ ou conselho).</div>""")
+        (População “Empregados”, o padrão: sem conselheiros, estagiários e PJ, como pede o GRI 2-21; “Todos os ativos” traz o quadro inteiro).</div>""")
 
     reporte = pd.DataFrame([
         ("Headcount", _int(v["headcount"])),
