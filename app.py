@@ -29,22 +29,16 @@ CORES_RACA = {"Branca": "#A8C5D0", "Parda": "#4A8FA8", "Preta": AZUL, "Amarela":
 SEM_DADOS = "Sem pessoas no filtro selecionado."
 EST_TXT = {"Média": "médio", "Mediana": "mediano"}
 SEM_COMPARACAO = "O filtro não tem homens e mulheres ao mesmo tempo para comparar."
-VISOES = ["Visão geral e RI", "Gênero", "Raça/cor", "Tempo de casa", "Setores"]
 EIXO_REAIS = "'R$ ' + replace(format(datum.value, ',.0f'), ',', '.')"
 
 st.set_page_config(page_title="Equidade Salarial · Pacaembu Construtora", page_icon=str(ASSETS / "icone-equidade.png"), layout="wide")
 
-st.html(f"""<style>
-.kpi {{ background:#fff; border:1px solid {BORDA}; border-radius:10px; overflow:hidden; height:100%; }}
-.kpi-topo {{ background:{AZUL}; color:#fff; font-weight:700; font-size:.74rem; letter-spacing:.04em; padding:.45rem .85rem; }}
-.kpi-valor {{ color:{CINZA_ESCURO}; font-size:1.75rem; font-weight:700; text-align:center; padding:.65rem 0 .1rem; }}
-.kpi-delta {{ text-align:center; font-size:.78rem; font-weight:600; min-height:1.2rem; padding:0 .5rem .55rem; color:{CINZA}; }}
-.kpi-base {{ height:7px; background:{AMARELO}; }}
-.secao {{ color:{AZUL}; font-weight:700; font-size:1.05rem; border-bottom:3px solid {AMARELO};
-          display:inline-block; padding-bottom:.15rem; margin:.6rem 0 .2rem; }}
-.titulo-graf {{ color:{CINZA_ESCURO}; font-weight:600; font-size:.92rem; margin-bottom:-.4rem; }}
-.nota {{ color:{CINZA}; font-size:.8rem; line-height:1.35; }}
-</style>""")
+AJUDA_GAP = ("Gap de gênero = (salário dos homens − salário das mulheres) ÷ salário dos homens. "
+             "Positivo = mulheres ganham menos. Vermelho a partir de 5% a menos; azul a partir de 5% a mais.")
+AJUDA_GAP_CARGO = ("Gap calculado dentro de cada cargo que tem homens e mulheres, ponderado pelo número de pessoas: "
+                   "tira o efeito de homens e mulheres ocuparem cargos diferentes.")
+AJUDA_RAZAO = ("Maior salário-base do filtro dividido pela mediana (ou média) de todas as outras pessoas. "
+               "O GRI 2-21 pede a razão pela mediana.")
 
 # login antes de qualquer dado (mesma tabela acesso.app_users dos outros painéis) + matriz de acessos
 auth.exigir_login()
@@ -93,18 +87,9 @@ def _gap_txt(v) -> str:
     return "sem comparação" if _vazio(v) else f"gap {_pct(v)}"
 
 
-def kpi(rotulo: str, valor: str, nota: str = "", cor_nota: str = CINZA) -> None:
-    st.html(f"""<div class="kpi"><div class="kpi-topo">{rotulo}</div><div class="kpi-valor">{valor}</div>
-    <div class="kpi-delta" style="color:{cor_nota}">{nota}</div><div class="kpi-base"></div></div>""")
-
-
 def _cor_gap(v) -> str:
     """Vermelho quando as mulheres ganham 5% ou mais a menos; azul quando ganham 5% ou mais a mais."""
     return CINZA if _vazio(v) or abs(v) < .05 else (VERMELHO if v > 0 else AZUL)
-
-
-def secao(titulo: str) -> None:
-    st.html(f'<div class="secao">{titulo}</div>')
 
 
 def _cor_entre(c1: str, c2: str, t: float) -> str:
@@ -297,10 +282,16 @@ except Exception as exc:  # noqa: BLE001
 
 ref = m.data_referencia(df)
 pp.logo(ASSETS / "icone-equidade.png", "Equidade Salarial")
+navegacao = st.navigation([
+    st.Page(lambda: pagina_geral(), title="Visão geral e RI", icon=":material/dashboard:", url_path="visao-geral", default=True),
+    st.Page(lambda: pagina_genero(), title="Gênero", icon=":material/wc:", url_path="genero"),
+    st.Page(lambda: pagina_raca(), title="Raça/cor", icon=":material/diversity_3:", url_path="raca-cor"),
+    st.Page(lambda: pagina_tempo(), title="Tempo de casa", icon=":material/schedule:", url_path="tempo-de-casa"),
+    st.Page(lambda: pagina_setores(), title="Setores", icon=":material/apartment:", url_path="setores"),
+])
 
 opcoes = lambda c: sorted(df[c].dropna().unique())  # noqa: E731
 with pp.barra_lateral(fonte="Neon + Databricks", atualizado_em=carga):
-    visao = st.radio("Visão", VISOES, label_visibility="collapsed")
     est = st.segmented_control("Estatística", ["Média", "Mediana"], default="Média",
                                help="Vale para os gráficos de gênero, raça/cor e tempo de casa.") or "Média"
     st.markdown("**Filtros**")
@@ -317,8 +308,12 @@ with pp.barra_lateral(fonte="Neon + Databricks", atualizado_em=carga):
         "raca_cor": st.multiselect("Raça/cor", [r for r in m.ORDEM_RACA if r in set(df["raca_cor"])], placeholder="Todas"),
     }
 
-st.title(visao if visao != "Visão geral e RI" else "Equidade Salarial", anchor=False)
-st.caption(f"Quadro ativo em {ref:%d/%m/%Y} · salário-base mensal · gap = (homens − mulheres) ÷ homens; positivo = mulheres ganham menos")
+rotulos = {"diretoria": "Diretoria", "area": "Área", "nome_centro_custo": "Centro de custo", "familia_cargo": "Família de cargo",
+           "nivel": "Nível", "vinculo": "Vínculo", "sexo": "Sexo", "raca_cor": "Raça/cor"}
+pp.cabecalho("Equidade Salarial" if navegacao.title == "Visão geral e RI" else navegacao.title, atualizado_em=carga,
+             filtros={rotulos[c]: vals for c, vals in sel.items()},
+             legenda=f"Quadro ativo em {ref:%d/%m/%Y} · salário-base mensal · estatística dos gráficos: {est.lower()} · "
+                     "gap = (homens − mulheres) ÷ homens; positivo = mulheres ganham menos")
 
 base = df
 for col, vals in sel.items():
@@ -332,35 +327,37 @@ if q.empty:
 
 v = m.visao_geral(q)
 
-# ============================================================================= visão geral e RI
-if visao == "Visão geral e RI":
-    c = st.columns(4)
-    with c[0]: kpi("HEADCOUNT", _int(v["headcount"]), f"{_pct(v['pct_mulheres'])} mulheres · {_pct(v['pct_negras'])} pretas e pardas")
-    with c[1]: kpi("MASSA SALARIAL MENSAL", _reais(v["massa"]), "Soma dos salários-base")
-    with c[2]: kpi("SALÁRIO MÉDIO", _reais(v["media"]), "Média do quadro")
-    with c[3]: kpi("SALÁRIO MEDIANO", _reais(v["mediana"]), "Metade ganha até este valor")
+# ============================================================================= páginas
 
-    secao("Indicadores para RI e Sustentabilidade")
+def pagina_geral() -> None:
+    pp.secao("Quadro e remuneração")
+    c = st.columns(4)
+    with c[0]: pp.kpi("HEADCOUNT", _int(v["headcount"]), f"{_pct(v['pct_mulheres'])} mulheres · {_pct(v['pct_negras'])} pretas e pardas")
+    with c[1]: pp.kpi("MASSA SALARIAL MENSAL", _reais(v["massa"]), "Soma dos salários-base")
+    with c[2]: pp.kpi("SALÁRIO MÉDIO", _reais(v["media"]), "Média do quadro")
+    with c[3]: pp.kpi("SALÁRIO MEDIANO", _reais(v["mediana"]), "Metade ganha até este valor")
+
+    pp.secao("Indicadores para RI e Sustentabilidade")
     ajuste = m.gap_ajustado_por_cargo(q)
     c = st.columns(4)
-    with c[0]: kpi("MAIOR REMUNERAÇÃO ÷ MÉDIA", _vezes(v["razao_media"]), "vs média das demais pessoas")
-    with c[1]: kpi("MAIOR REMUNERAÇÃO ÷ MEDIANA", _vezes(v["razao_mediana"]), "vs mediana das demais (GRI 2-21)")
-    with c[2]: kpi("GAP DE GÊNERO · MÉDIA", _pct(v["gap_media"]), f"pela mediana: {_pct(v['gap_mediana'])}", _cor_gap(v["gap_media"]))
-    with c[3]: kpi("GAP NO MESMO CARGO", _pct(ajuste["gap_ajustado"]),
-                   f"{_int(ajuste['cargos_comparaveis'])} cargos com homens e mulheres · {_int(ajuste['pessoas_comparaveis'])} pessoas",
-                   _cor_gap(ajuste["gap_ajustado"]))
+    with c[0]: pp.kpi("MAIOR REMUNERAÇÃO ÷ MÉDIA", _vezes(v["razao_media"]), "vs média das demais pessoas")
+    with c[1]: pp.kpi("MAIOR REMUNERAÇÃO ÷ MEDIANA", _vezes(v["razao_mediana"]), "vs mediana das demais (GRI 2-21)", ajuda=AJUDA_RAZAO)
+    with c[2]: pp.kpi("GAP DE GÊNERO · MÉDIA", _pct(v["gap_media"]), f"pela mediana: {_pct(v['gap_mediana'])}", _cor_gap(v["gap_media"]), ajuda=AJUDA_GAP)
+    with c[3]: pp.kpi("GAP NO MESMO CARGO", _pct(ajuste["gap_ajustado"]),
+                   f"{_int(ajuste['cargos_comparaveis'])} cargos · {_int(ajuste['pessoas_comparaveis'])} pessoas",
+                   _cor_gap(ajuste["gap_ajustado"]), ajuda=AJUDA_GAP_CARGO)
     c = st.columns(4)
     conc = m.concentracao_massa(q)
-    with c[0]: kpi("MULHERES NA LIDERANÇA", _pct(v["pct_mulheres_lideranca"]), f"no quadro: {_pct(v['pct_mulheres'])}")
-    with c[1]: kpi("PRETAS E PARDAS NA LIDERANÇA", _pct(v["pct_negras_lideranca"]), f"no quadro: {_pct(v['pct_negras'])}")
-    with c[2]: kpi("MASSA COM OS 10% MAIS BEM PAGOS", _pct(conc["top10"]), f"com o 1% mais bem pago: {_pct(conc['top1'])}")
+    with c[0]: pp.kpi("MULHERES NA LIDERANÇA", _pct(v["pct_mulheres_lideranca"]), f"no quadro: {_pct(v['pct_mulheres'])}")
+    with c[1]: pp.kpi("PRETAS E PARDAS NA LIDERANÇA", _pct(v["pct_negras_lideranca"]), f"no quadro: {_pct(v['pct_negras'])}")
+    with c[2]: pp.kpi("MASSA COM OS 10% MAIS BEM PAGOS", _pct(conc["top10"]), f"com o 1% mais bem pago: {_pct(conc['top1'])}")
     with c[3]:
         r = m.por_raca(q)
         rp = r.loc[r["raca_cor"].isin(["Preta", "Parda"])]
         br = r.loc[r["raca_cor"] == "Branca", "media"]
         media_negras = q.loc[q["negra"], "salario"].mean()
         dif = (media_negras - float(br.iloc[0])) / float(br.iloc[0]) if len(br) and len(rp) else None
-        kpi("PRETAS E PARDAS VS BRANCAS", _pct(dif), "diferença no salário médio", _cor_gap(-dif if dif is not None else None))
+        pp.kpi("PRETAS E PARDAS VS BRANCAS", _pct(dif), "diferença no salário médio", _cor_gap(-dif if dif is not None else None))
 
     g1, g2 = st.columns([6, 5])
     with g1:
@@ -397,15 +394,16 @@ if visao == "Visão geral e RI":
         st.download_button("Baixar CSV", reporte.to_csv(index=False, sep=";").encode("utf-8-sig"),
                            f"equidade_salarial_{ref:%Y%m%d}.csv", "text/csv", icon=":material/download:")
 
-# ============================================================================= gênero
-elif visao == "Gênero":
+
+def pagina_genero() -> None:
+    pp.secao("Gap salarial de gênero")
     ajuste = m.gap_ajustado_por_cargo(q)
     c = st.columns(4)
-    with c[0]: kpi("GAP PELA MÉDIA", _pct(v["gap_media"]), "quadro todo", _cor_gap(v["gap_media"]))
-    with c[1]: kpi("GAP PELA MEDIANA", _pct(v["gap_mediana"]), "quadro todo", _cor_gap(v["gap_mediana"]))
-    with c[2]: kpi("GAP NO MESMO CARGO", _pct(ajuste["gap_ajustado"]), f"{_int(ajuste['cargos_comparaveis'])} cargos comparáveis",
-                   _cor_gap(ajuste["gap_ajustado"]))
-    with c[3]: kpi("MULHERES NA LIDERANÇA", _pct(v["pct_mulheres_lideranca"]), f"no quadro: {_pct(v['pct_mulheres'])}")
+    with c[0]: pp.kpi("GAP PELA MÉDIA", _pct(v["gap_media"]), "quadro todo", _cor_gap(v["gap_media"]), ajuda=AJUDA_GAP)
+    with c[1]: pp.kpi("GAP PELA MEDIANA", _pct(v["gap_mediana"]), "quadro todo", _cor_gap(v["gap_mediana"]))
+    with c[2]: pp.kpi("GAP NO MESMO CARGO", _pct(ajuste["gap_ajustado"]), f"{_int(ajuste['cargos_comparaveis'])} cargos comparáveis",
+                   _cor_gap(ajuste["gap_ajustado"]), ajuda=AJUDA_GAP_CARGO)
+    with c[3]: pp.kpi("MULHERES NA LIDERANÇA", _pct(v["pct_mulheres_lideranca"]), f"no quadro: {_pct(v['pct_mulheres'])}")
     st.html('<div class="nota">A diferença entre o gap do quadro todo e o gap no mesmo cargo mostra quanto vem de '
             'homens e mulheres ocuparem cargos diferentes (segregação) e quanto vem de salários diferentes para o mesmo cargo.</div>')
 
@@ -419,7 +417,7 @@ elif visao == "Gênero":
                                                                           {"Masculino": AZUL, "Feminino": AMARELO}),
                    max(260, 46 * len(niv)), SEM_DADOS)
 
-    secao("Mesmo cargo, homens x mulheres")
+    pp.secao("Mesmo cargo, homens x mulheres")
     cargos = m.por_sexo(q, "cargo")
     cargos = cargos[(cargos["homens"] > 0) & (cargos["mulheres"] > 0)].copy()
     if cargos.empty:
@@ -434,19 +432,20 @@ elif visao == "Gênero":
         st.caption(f"{_int(len(cargos))} cargos com homens e mulheres, ordenados pelo tamanho do gap. "
                    "Vermelho = mulheres ganham menos; azul = ganham mais. Cargos com 1 ou 2 pessoas de um dos sexos oscilam muito.")
 
-# ============================================================================= raça/cor
-elif visao == "Raça/cor":
+
+def pagina_raca() -> None:
+    pp.secao("Raça/cor no quadro e na remuneração")
     r = m.por_raca(q)
     br = r.loc[r["raca_cor"] == "Branca", "media"]
     media_negras = q.loc[q["negra"], "salario"].mean()
     dif = (media_negras - float(br.iloc[0])) / float(br.iloc[0]) if len(br) and q["negra"].any() else None
     c = st.columns(4)
-    with c[0]: kpi("PRETAS E PARDAS NO QUADRO", _pct(v["pct_negras"]), f"{_int(q['negra'].sum())} pessoas")
-    with c[1]: kpi("PRETAS E PARDAS NA LIDERANÇA", _pct(v["pct_negras_lideranca"]), "coordenação para cima")
-    with c[2]: kpi("SALÁRIO MÉDIO VS BRANCAS", _pct(dif), "pretas e pardas", _cor_gap(-dif if dif is not None else None))
+    with c[0]: pp.kpi("PRETAS E PARDAS NO QUADRO", _pct(v["pct_negras"]), f"{_int(q['negra'].sum())} pessoas")
+    with c[1]: pp.kpi("PRETAS E PARDAS NA LIDERANÇA", _pct(v["pct_negras_lideranca"]), "coordenação para cima")
+    with c[2]: pp.kpi("SALÁRIO MÉDIO VS BRANCAS", _pct(dif), "pretas e pardas", _cor_gap(-dif if dif is not None else None))
     with c[3]:
         nao = r.loc[r["raca_cor"] == "Não Informada", "pessoas"]
-        kpi("RAÇA/COR NÃO INFORMADA", _int(nao.iloc[0] if len(nao) else 0), "pessoas sem declaração no cadastro")
+        pp.kpi("RAÇA/COR NÃO INFORMADA", _int(nao.iloc[0] if len(nao) else 0), "pessoas sem declaração no cadastro")
 
     g1, g2 = st.columns([6, 6])
     with g1:
@@ -454,7 +453,7 @@ elif visao == "Raça/cor":
     with g2:
         pp.grafico("Raça/cor em cada nível", composicao_por_nivel(q, "raca_cor", CORES_RACA), max(340, 30 * q["nivel"].nunique()), SEM_DADOS)
 
-    secao(f"Salário {EST_TXT[est]} por nível e raça/cor")
+    pp.secao(f"Salário {EST_TXT[est]} por nível e raça/cor")
     campo = "mean" if est == "Média" else "median"
     piv = q.pivot_table(index="nivel", columns="raca_cor", values="salario", aggfunc=campo)
     n = q.pivot_table(index="nivel", columns="raca_cor", values="salario", aggfunc="size")
@@ -474,23 +473,24 @@ elif visao == "Raça/cor":
     st.caption("Entre parênteses, o número de pessoas. Cor = diferença para o grupo Branca no mesmo nível "
                "(vermelho = ganha menos; azul = ganha mais).")
 
-# ============================================================================= tempo de casa
-elif visao == "Tempo de casa":
+
+def pagina_tempo() -> None:
+    pp.secao("Salário por tempo de casa")
     tc = m.por_tempo_casa(q)
     c = st.columns(4)
     medias = q.groupby("faixa_tempo_casa")["salario"].agg("mean" if est == "Média" else "median")
-    with c[0]: kpi("TEMPO DE CASA MÉDIO", f"{q['tempo_casa_dias'].mean() / 365.25:.1f} anos".replace(".", ","), "quadro filtrado")
-    with c[1]: kpi("ATÉ 1 ANO DE CASA", _reais(medias.get("Até 1 ano")), f"salário {EST_TXT[est]}")
-    with c[2]: kpi("3 A 5 ANOS", _reais(medias.get("3 a 5 anos")), f"salário {EST_TXT[est]}")
-    with c[3]: kpi("+ 10 ANOS", _reais(medias.get("+ 10 anos")), f"salário {EST_TXT[est]}")
+    with c[0]: pp.kpi("TEMPO DE CASA MÉDIO", f"{q['tempo_casa_dias'].mean() / 365.25:.1f} anos".replace(".", ","), "quadro filtrado")
+    with c[1]: pp.kpi("ATÉ 1 ANO DE CASA", _reais(medias.get("Até 1 ano")), f"salário {EST_TXT[est]}")
+    with c[2]: pp.kpi("3 A 5 ANOS", _reais(medias.get("3 a 5 anos")), f"salário {EST_TXT[est]}")
+    with c[3]: pp.kpi("+ 10 ANOS", _reais(medias.get("+ 10 anos")), f"salário {EST_TXT[est]}")
     pp.grafico(f"Salário {EST_TXT[est]} por tempo de casa: homens x mulheres", barras_hm_verticais(tc, "faixa_tempo_casa", est), 380, SEM_DADOS)
     st.html('<div class="nota">Tempo de casa na data do quadro. O salário por faixa mistura cargos diferentes: '
             'combine com o filtro Nível ou Família de cargo para comparar pessoas parecidas.</div>')
 
-# ============================================================================= setores
-else:
+
+def pagina_setores() -> None:
     with st.container(horizontal=True, vertical_alignment="center"):
-        secao("Setores mais desbalanceados ou concentrados")
+        pp.secao("Setores mais desbalanceados ou concentrados")
         nivel_setor = st.segmented_control("Agrupar por", ["Área", "Diretoria"], default="Área", label_visibility="collapsed") or "Área"
     s = m.setores(q, "area" if nivel_setor == "Área" else "diretoria")
     g1, g2 = st.columns(2)
@@ -531,3 +531,6 @@ else:
     st.caption(f"Δ = distância, em pontos percentuais, para a empresa ({_pct(v['pct_mulheres'])} mulheres, "
                f"{_pct(v['pct_negras'])} pretas e pardas) — amarelo mais forte = mais desbalanceado. "
                "Concentração = fatia da massa ÷ fatia do headcount. Clique no título da coluna para ordenar.")
+
+
+navegacao.run()

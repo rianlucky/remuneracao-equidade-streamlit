@@ -67,3 +67,7 @@ e tempo de casa.
 compara com um cálculo independente sobre `core.fato_funcionario_ativo`. Em 28/09/2026
 (referência 27/09): headcount 1.520 (régua 1.518, diferença da regra por data), massa, razões
 para RI e gaps pela média e mediana ✅; sem duplicidade e sem ativos sem salário.
+
+## Padrão visual atualizado (30/09/2026)
+
+Visões na barra lateral como páginas com ícones (st.navigation, como no Turnover Comercial e na Aderência), login padrão da Central, título em Nunito com selos de "Atualizado em" e dos filtros aplicados, cards com o recorte em seta da marca e "i" explicando gap de gênero, gap no mesmo cargo e a razão da maior remuneração (GRI 2-21), seções em todas as páginas e impressão em A4 deitada. Cálculos sem mudança.
